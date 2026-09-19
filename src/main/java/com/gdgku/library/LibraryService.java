@@ -1,6 +1,7 @@
 package com.gdgku.library;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,27 +11,33 @@ import java.util.Map;
 @Service
 public class LibraryService {
 
-    private final Map<Long, Book> books = new HashMap<>();
-    private final List<Loan> loans = new ArrayList<>();
-    private long nextBookId = 1L;
-    private long nextLoanId = 1L;
+    private final BookRepository bookRepository;
+    private final LoanRepository loanRepository;
+
+    public LibraryService(
+            BookRepository bookRepository,
+            LoanRepository loanRepository
+    ) {
+        this.bookRepository = bookRepository;
+        this.loanRepository = loanRepository;
+    }
 
     public Book registerBook(String title, int totalCopies) {
-        Book book = new Book(nextBookId++, title, totalCopies, totalCopies);
-        books.put(book.getId(), book);
-        return book;
+        Book book = new Book(null, title, totalCopies, totalCopies);
+        return bookRepository.save(book);
     }
 
     public Book getBook(Long bookId) {
-        return books.get(bookId);
+    return bookRepository.findById(bookId)
+                .orElse(null);
     }
 
+    @Transactional
     public Loan borrow(Long bookId, String borrowerName) {
-        Book book = books.get(bookId);
-        if (book == null) {
-            throw new IllegalArgumentException("존재하지 않는 도서입니다.");
-        }
-        if (book.getAvailableCopies() <= 0) {
+        Book book = bookRepository.findById(bookId)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 도서입니다."));
+        
+            if (book.getAvailableCopies() <= 0) {
             throw new IllegalStateException("대출 가능한 재고가 없습니다.");
         }
 
@@ -38,32 +45,37 @@ public class LibraryService {
         book.setAvailableCopies(book.getAvailableCopies() - 1);
 
         // 2단계: 이미 같은 책을 빌리고 아직 반납하지 않았는지는 재고를 깎은 "뒤에" 확인한다.
-        boolean alreadyBorrowing = loans.stream()
-                .anyMatch(loan -> loan.getBookId().equals(bookId)
-                        && loan.getBorrowerName().equals(borrowerName)
-                        && !loan.isReturned());
-        if (alreadyBorrowing) {
-            throw new IllegalStateException(borrowerName + "님은 이미 이 책을 대출 중입니다.");
+        if (loanRepository.existsByBookIdAndBorrowerNameAndReturnedFalse(
+                bookId, borrowerName)) {
+            throw new IllegalStateException(
+                    borrowerName + "님은 이미 이 책을 대출 중입니다."
+            );
         }
 
-        Loan loan = new Loan(nextLoanId++, bookId, borrowerName, false);
-        loans.add(loan);
-        return loan;
+        Loan loan = new Loan(null, bookId, borrowerName, false);
+        return loanRepository.save(loan);
     }
 
     public List<Loan> getAllLoans() {
-        return loans;
+        return loanRepository.findAll();
     }
 
+    @Transactional 
     public Loan returnBook(Long loanId) {
-        for (Loan loan : loans) {
-            if (loan.getId().equals(loanId)) {
-                loan.setReturned(true);
-                Book book = books.get(loan.getBookId());
-                book.setAvailableCopies(book.getAvailableCopies() + 1);
-                return loan;
-            }
+        Loan loan = loanRepository.findById(loanId)
+                .orElse(null);
+
+        if (loan == null) {
+            return null;
         }
-        return null;
+
+        loan.setReturned(true);
+
+        Book book = bookRepository.findById(loan.getBookId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 도서입니다."));
+
+        book.setAvailableCopies(book.getAvailableCopies() + 1);
+
+        return loan;
     }
 }

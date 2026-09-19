@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 /**
  * [문제: 입력 검증 부재]
  *
@@ -19,8 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
  * CourseControllerTest의 실패하는 테스트들이 이 문제들을 각각 잡아낸다.
  *
  * 할 일: Bean Validation(@NotBlank, @Positive 등)과 Service의 비즈니스 규칙 검증을 추가해서
- * 정원 초과/중복 신청/빈 값이 4xx로 거부되도록 고치자.
- */
+ * 정원 초과/중복 신청/빈 값이 4xx로 거부되도록 고치자. + 에러 처리 핸들러 추가
+ */ 
 @RestController
 @RequestMapping("/courses")
 public class CourseController {
@@ -32,7 +34,7 @@ public class CourseController {
     }
 
     @PostMapping
-    public CourseResponse createCourse(@RequestBody CourseRequest request) {
+    public CourseResponse createCourse(@Valid @RequestBody CourseRequest request) {
         return courseService.createCourse(request.getName(), request.getCapacity());
     }
 
@@ -42,7 +44,7 @@ public class CourseController {
     }
 
     @PostMapping("/{courseId}/enrollments")
-    public CourseResponse enroll(@PathVariable Long courseId, @RequestBody EnrollRequest request) {
+    public CourseResponse enroll(@PathVariable Long courseId, @Valid @RequestBody EnrollRequest request) {
         return courseService.enroll(courseId, request.getStudentName());
     }
 }

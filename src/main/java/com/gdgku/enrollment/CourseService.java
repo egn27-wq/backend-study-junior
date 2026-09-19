@@ -1,6 +1,8 @@
 package com.gdgku.enrollment;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,21 +14,36 @@ public class CourseService {
     private long nextCourseId = 1L;
 
     public CourseResponse createCourse(String name, int capacity) {
-        // 이름이 비어 있거나 정원이 0 이하여도 그대로 생성된다.
         Course course = new Course(nextCourseId++, name, capacity);
         courses.put(course.getId(), course);
         return new CourseResponse(course);
     }
 
     public CourseResponse getCourse(Long courseId) {
-        return new CourseResponse(courses.get(courseId));
+        Course course = findCourseOrThrow(courseId);
+        return new CourseResponse(course);
     }
 
     public CourseResponse enroll(Long courseId, String studentName) {
-        Course course = courses.get(courseId);
-        // 정원 초과 여부, 중복 신청 여부를 전혀 확인하지 않는다.
-        // studentName이 null이면(요청에 값이 없으면) 여기서 NullPointerException이 발생한다.
+        Course course = findCourseOrThrow(courseId);
+
+        if (course.getEnrolledCount() >= course.getCapacity()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "정원이 초과되었습니다.");
+        }
+
+        if (course.getEnrolledStudents().contains(studentName)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 신청한 강의입니다.");
+        }
+
         course.getEnrolledStudents().add(studentName.trim());
         return new CourseResponse(course);
+    }
+
+    private Course findCourseOrThrow(Long courseId) {
+        Course course = courses.get(courseId);
+        if (course == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 강의입니다.");
+        }
+        return course;
     }
 }

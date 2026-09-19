@@ -26,7 +26,8 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse createReservation(Long concertId, ReservationRequest request) {
-        Concert concert = findConcertOrThrow(concertId);
+        Concert concert = concertRepository.findByIdForUpdate(concertId)
+            .orElseThrow(() -> new TicketException(ErrorCode.CONCERT_NOT_FOUND));
 
         int seatCount = request.getSeatCount();
         if (concert.getAvailableSeats() < seatCount) {

@@ -1,7 +1,10 @@
 package com.gdgku.enrollment;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class EnrollRequest {
 
+    @NotBlank
     private String studentName;
 
     public EnrollRequest() {

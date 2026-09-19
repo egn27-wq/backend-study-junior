@@ -1,8 +1,14 @@
 package com.gdgku.enrollment;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+
 public class CourseRequest {
 
+    @NotBlank
     private String name;
+
+    @Positive
     private int capacity;
 
     public CourseRequest() {
